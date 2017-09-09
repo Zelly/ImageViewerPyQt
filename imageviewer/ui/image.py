@@ -1,6 +1,4 @@
-
-from PyQt5.QtWidgets import QLabel, QSizePolicy,QVBoxLayout
-
+from PyQt5.QtWidgets import QLabel, QSizePolicy,QVBoxLayout,QStyle
 from PyQt5.QtCore import Qt, QByteArray, QMimeData,QUrl
 from PyQt5.QtGui import QPixmap, QMovie, QDrag, QImage
 
@@ -19,8 +17,10 @@ class UI_ImagePopup(QLabel):
         movie = QMovie(filepath, QByteArray(), self)
         size = movie.scaledSize()
         self.setGeometry(200, 200, size.width(), size.height())
-        self.setWindowTitle("title")
-
+        self.setWindowTitle('GifPreview')
+        self.setWindowIcon(self.style().standardIcon(QStyle.SP_ComputerIcon)) #TODO: Make icon
+        
+        self.setStyleSheet("QLabel {background-color: black;}")
         movie_screen = QLabel()
         # Make label fit the gif
         movie_screen.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
@@ -41,16 +41,13 @@ class UI_ImagePopup(QLabel):
         # The following is blackmagic copy pasted from the internet
         # FramelessWindowHint may not work on some window managers on Linux
         # so I force also the flag X11BypassWindowManagerHint
-        self.setWindowFlags(Qt.Popup | Qt.WindowStaysOnTopHint 
-                            | Qt.FramelessWindowHint 
-                            | Qt.X11BypassWindowManagerHint)
-        
+        #self.setWindowFlags(Qt.Popup | Qt.WindowStaysOnTopHint | Qt.FramelessWindowHint | Qt.X11BypassWindowManagerHint)
+        self.setWindowFlags(Qt.FramelessWindowHint | Qt.X11BypassWindowManagerHint | Qt.WindowStaysOnTopHint)
         movie.setCacheMode(QMovie.CacheAll)
         movie.setSpeed(100)
         movie_screen.setMovie(movie)
         movie.start()
-#    def leaveEvent(self,event):
-#        self.destroy()
+
 class UI_ImageLabel(QLabel):
     """
         Displays a thumbnail and saves the thumbnail and original image 
@@ -80,7 +77,7 @@ class UI_ImageLabel(QLabel):
             event.accept()
     def leaveEvent(self,event):
         print("Destroy from parent")
-        self.p.destroy() #TODO: Cannot get this triggered 
+        self.p.close() #TODO: Cannot get this triggered 
     def mousePressEvent(self, e):
         if e.buttons() == Qt.LeftButton:
             url = None
@@ -96,8 +93,8 @@ class UI_ImageLabel(QLabel):
                 print(url.isValid())
                 print(url.isLocalFile())
                 print("Image loaded")
+            
             mime = QMimeData()
-            #mime.setData("image/gif",image.)
             mime.setImageData(image)
             mime.setUrls([url])
             print("Setting image mimedata\n[%s]\nhasImage(%s)" % (mime.text(), str(mime.hasImage())))
