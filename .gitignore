@@ -168,5 +168,6 @@ venv.bak/
 # mypy
 .mypy_cache/
 random/*
+.idea/
 
 # End of https://www.gitignore.io/api/python
