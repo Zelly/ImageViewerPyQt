@@ -40,7 +40,7 @@ class Ui_MainWindow(QWidget):
         # self.scrollContent.setContentsMargins(0, 0, 0, 0)
         # self.setContentsMargins(0,0,0,0)
 
-        self.setStyleSheet("background-color: white; border: 1px solid blue;")
+        self.setStyleSheet("background-color: white; border: 1px solid black;")
 
         show_action = QAction("Show", self)
         quit_action = QAction("Exit", self)  # TODO: Remove icon on exit this way
