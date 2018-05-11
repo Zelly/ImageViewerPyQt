@@ -1,12 +1,14 @@
-from PyQt5.QtWidgets import QLabel, QSizePolicy, QVBoxLayout, QStyle, QGridLayout, QDesktopWidget
-from PyQt5.QtCore import Qt, QByteArray, QMimeData, QUrl
+from PyQt5.QtWidgets import QLabel, QSizePolicy, QVBoxLayout, QStyle, QGridLayout, QDesktopWidget, QApplication
+from PyQt5.QtCore import Qt, QByteArray, QMimeData, QUrl, QPoint, QTime, QBuffer, QIODevice
 from PyQt5.QtGui import QPixmap, QMovie, QDrag, QImage
 from time import time
 
-current_milli_time = lambda: int(round(time() * 1000))
+
+def current_milliseconds():
+    return int(round(time()*1000))
 
 
-class UI_ImagePopup(QLabel):
+class UiImagePopup(QLabel):
     """
     Plays the image of the parent "UI_ImageLabel" if it is a gif in a popup form
     Issues:
@@ -39,7 +41,7 @@ class UI_ImagePopup(QLabel):
         width_space = self.sizeObject.width() - position.x()
         x = position.x()
         w = width_space - 100
-        print(width_space, w)
+        #print(width_space, w)
         if width_space <= (self.sizeObject.width() / 2):
             # Position to right
             w = width_space - 100
@@ -87,7 +89,7 @@ class UI_ImagePopup(QLabel):
         self.close()
 
 
-class UI_ImageLabel(QLabel):
+class UiImageLabel(QLabel):
     """
         Displays a thumbnail and saves the thumbnail and original image 
     paths for refernence in other objects.
@@ -96,15 +98,19 @@ class UI_ImageLabel(QLabel):
 
     def __init__(self):
         QLabel.__init__(self)
+        self.setText("This is a test")
         self.thumbnail_path = ""
         self.file_path = ""
         self.setContentsMargins(0, 0, 0, 0)
         self.setStyleSheet("QLabel { background-color: white; }")
         self.dragging = False
-        self.timedelay = current_milli_time()
+        self.timedelay = current_milliseconds()
         self.popup = None
+        self.mouse_down = False  # has a left-click happened yet?
+        self.mouse_posn = QPoint()  # if so, this was where...
+        self.mouse_time = QTime()  # ...and this was when.
 
-    def loadThumbnail(self):
+    def load_thumbnail(self):
         pixmap = QPixmap(self.thumbnail_path)
 
         self.setPixmap(pixmap)
@@ -112,10 +118,10 @@ class UI_ImageLabel(QLabel):
     """ This widget displays an ImagePopup when the mouse enter its region """
 
     def enterEvent(self, event):
-        if not self.dragging and current_milli_time() >= self.timedelay:
+        if not self.dragging and current_milliseconds() >= self.timedelay:
             self.parent.close_all_popup()
-            self.timedelay = current_milli_time() + 250
-            self.popup = UI_ImagePopup(self.file_path)
+            self.timedelay = current_milliseconds() + 250
+            self.popup = UiImagePopup(self.file_path)
             self.popup.parent = self
             self.popup.show()
         event.accept()
@@ -127,10 +133,62 @@ class UI_ImageLabel(QLabel):
 
     def leaveEvent(self, event):
         if self.popup:
-            print("Destroy from parent")
+            #print("Destroy from parent")
             self.parent.close_all_popup()
 
-    def mousePressEvent(self, e):
+    def do_drag(self, actions):
+        # Create the QDrag object
+        dragster = QDrag(self)
+        # Make a scaled pixmap of our widget to put under the cursor.
+        thumb = self.grab().scaledToHeight(50)
+        dragster.setPixmap(thumb)
+        dragster.setHotSpot(QPoint(thumb.width()/2, thumb.height()/2))
+        # Create some data to be dragged and load it in the dragster.
+        md = QMimeData()
+        image = QImage()
+        if not image.load(self.file_path):
+            print("do_drag: Failed to load original image")
+        else:
+            url = QUrl.fromLocalFile(self.file_path)
+            print("do_drag: Image loaded, isValid()", url.isValid(), " isLocalFile()", url.isLocalFile())
+        md.setImageData(image)
+        md.setUrls([url])
+        print("Dragable formats:", md.formats())
+        dragster.setMimeData(md)
+        # Initiate the drag, which really is a form of modal dialog.
+        # Result is supposed to be the action performed at the drop.
+        act = dragster.exec_(actions)
+        defact = dragster.defaultAction()
+        # Display the results of the drag.
+        targ = dragster.target()  # s.b. the widget that received the drop
+        src = dragster.source()  # s.b. this very widget
+        print('Dragable: exec returns', int(act), 'default', int(defact), 'target', type(targ), 'source', type(src))
+        return
+
+    def mouseMoveEvent(self, event):
+        if self.mouse_down:
+            # Mouse left-clicked and is now moving. Is this the start of a
+            # drag? Note time since the click and approximate distance moved
+            # since the click and test against the app's standard.
+            t = self.mouse_time.elapsed()
+            d = (event.pos() - self.mouse_posn).manhattanLength()
+            if t >= QApplication.startDragTime() or d >= QApplication.startDragDistance():
+                # Yes, a proper drag is indicated. Commence dragging.
+                self.do_drag(Qt.CopyAction)
+                event.accept()
+                return
+        # Move does not (yet) constitute a drag, ignore it.
+        event.ignore()
+        super().mouseMoveEvent(event)
+
+    def mousePressEvent(self, event):
+        if event.button() == Qt.LeftButton:
+            self.mouse_down = True  # we are left-clicked-upon
+            self.mouse_posn = event.pos()  # here and...
+            self.mouse_time.start()  # ...now
+        event.ignore()
+        super().mousePressEvent(event)  # pass it on up
+        """
         if e.buttons() == Qt.LeftButton:
             self.dragging = True
             if self.popup:
@@ -163,7 +221,20 @@ class UI_ImageLabel(QLabel):
             drag.setPixmap(self.pixmap())
             print("Setting pixmap to drag")
             # drag.setHotSpot(self.rect().topLeft())
-            dropAction = drag.exec(Qt.CopyAction, Qt.CopyAction)
-            print("Dropped %s" % str(dropAction))
+            drop_action = drag.exec(Qt.CopyAction, Qt.CopyAction)
+            print("Dropped %s" % str(drop_action))
             self.dragging = False
             e.accept()
+
+            QImage image;
+        QByteArray ba;
+        QBuffer buffer(&ba);
+        buffer.open(QIODevice::WriteOnly);
+        image.save(&buffer, "PNG"); // writes image into ba in PNG format
+
+        ba = QByteArray()
+        buffer = QBuffer()
+        buffer.open(QIODevice.WriteOnly)
+        image.save(buffer, "PNG")
+        buffer.close()
+        md.setData("image/png", ba)"""

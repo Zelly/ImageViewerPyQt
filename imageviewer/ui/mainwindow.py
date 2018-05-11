@@ -10,12 +10,12 @@ from PyQt5.QtCore import QEvent, Qt
 from PIL import Image
 import os
 from imageviewer.constant.config import ROOT_DIR, THUMBNAIL_DIR
-from imageviewer.ui.image import UI_ImageLabel
+from imageviewer.ui.image import UiImageLabel
 import hashlib
 import shutil
 
 
-class Ui_MainWindow(QWidget):
+class UiMainWindow(QWidget):
     def __init__(self):
         QWidget.__init__(self)
         self.setMinimumSize(1024, 512)  # TODO: Resizable
@@ -53,69 +53,70 @@ class Ui_MainWindow(QWidget):
         tray_menu.addAction(hide_action)
         tray_menu.addAction(quit_action)
         self.tray_icon.setContextMenu(tray_menu)
-        self.tray_icon.activated.connect(self.onTrayIconActivated)
+        self.tray_icon.activated.connect(self.on_tray_icon_activated)
         self.tray_icon.show()
-        self.loadThumbnails()
+        self.load_thumbnails()
         self.scrollArea.setWidget(self.scrollContent)
         self.show()
 
     def close_all_popup(self):
         for imagelabel in self.scrollContent.children():
-            if imagelabel is not None and isinstance(imagelabel, UI_ImageLabel):
+            if imagelabel is not None and isinstance(imagelabel, UiImageLabel):
                 if imagelabel.popup is not None:
                     imagelabel.close_popup()
 
-    def loadThumbnails(self):
-        imagesPerRow = 7
+    def load_thumbnails(self):
+        images_per_row = 7
         row = col = 0
         # count = 0
         for root, _, files in os.walk(ROOT_DIR):
             # print('root = ' + root)
             for filename in files:
-                if not filename.endswith("jpg"): continue  # Ignore webm files
+                if not filename.endswith("jpg"):
+                    continue  # Ignore webm files
                 # if count > 7: return
                 file_path = os.path.join(root, filename)
                 edited_root = root.replace(ROOT_DIR, '').replace('\\', '').replace(' ', '_')
                 thumbnail_name = filename.replace('\\', '_').replace(' ', '_')
                 thumbnail_path = os.path.join(THUMBNAIL_DIR, (edited_root + thumbnail_name).lower())
                 thumbnail_path = os.path.splitext(thumbnail_path)[0] + '.jpg'
-                cleanname = os.path.splitext(file_path)[0]
-                if os.path.isfile(cleanname + ".jpg") and os.path.isfile(cleanname + ".gif"):
-                    os.remove(cleanname + ".jpg")
+                clean_name = os.path.splitext(file_path)[0]
+                if os.path.isfile(clean_name + ".jpg") and os.path.isfile(clean_name + ".gif"):
+                    os.remove(clean_name + ".jpg")
                     continue
                 if not os.path.isfile(thumbnail_path):
-                    self.createThumbnail(file_path, thumbnail_path)
-                label = UI_ImageLabel()
+                    self.create_thumbnail(file_path, thumbnail_path)
+                label = UiImageLabel()
                 label.parent = self
                 label.thumbnail_path = thumbnail_path
                 label.file_path = file_path
-                label.loadThumbnail()
+                label.load_thumbnail()
                 self.scrollLayout.addWidget(label, row, col, 1, 1)
                 col += 1
                 # count +=1
-                if col % imagesPerRow == 0:
+                if col % images_per_row == 0:
                     row += 1
                     col = 0
 
-    def createThumbnail(self, imagefilename, thumbnailfilename):
-        if imagefilename.endswith("jpg"):
-            newpath = os.path.join(THUMBNAIL_DIR, hashlib.md5(open(imagefilename, 'rb').read()).hexdigest() + "jpg")
-            shutil.copy(imagefilename, newpath)
-            img = Image.open(newpath).convert("RGB")
+    def create_thumbnail(self, image_filename, thumbnail_filename):
+        if image_filename.endswith("jpg"):
+            new_path = os.path.join(THUMBNAIL_DIR, hashlib.md5(open(image_filename, 'rb').read()).hexdigest() + "jpg")
+            shutil.copy(image_filename, new_path)
+            img = Image.open(new_path).convert("RGB")
             img_size = img.width, img.height
             img.thumbnail(img_size)
-            img.save(imagefilename, "JPEG")
-            print("Moved original image to %s" % newpath)
+            img.save(image_filename, "JPEG")
+            print("Moved original image to %s" % new_path)
         thumbnail_size = 128, 128
-        print("Loading %s" % imagefilename)
-        new_thumbnail = Image.open(imagefilename).convert("RGB")
+        print("Loading %s" % image_filename)
+        new_thumbnail = Image.open(image_filename).convert("RGB")
         print("Creating thumbnail ...")
         new_thumbnail.resize(thumbnail_size)
         new_thumbnail.thumbnail(thumbnail_size)
-        new_thumbnail.save(thumbnailfilename, "JPEG")
-        print("New thumbnail created at %s" % thumbnailfilename)
+        new_thumbnail.save(thumbnail_filename, "JPEG")
+        print("New thumbnail created at %s" % thumbnail_filename)
 
-    def onTrayIconActivated(self, reason):
+    def on_tray_icon_activated(self, reason):
         if reason == QSystemTrayIcon.DoubleClick:
             self.show()
             self.setWindowState(self.windowState() & ~Qt.WindowMinimized | Qt.WindowActive)
