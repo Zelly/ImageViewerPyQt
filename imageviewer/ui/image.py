@@ -1,6 +1,6 @@
 from PyQt5.QtWidgets import QLabel, QApplication
 from PyQt5.QtCore import Qt, QSize
-from PyQt5.QtGui import QMovie
+from PyQt5.QtGui import QMovie, QImage, QPixmap
 import subprocess
 from imageviewer.image import IVImage
 import imageviewer.settings
@@ -20,7 +20,9 @@ class UiImageGroup(QLabel):
         self.iv_image = iv_image
         self.setContentsMargins(0, 0, 0, 0)
         self.setStyleSheet("UiImageGroup { background-color: white; }")
-        self.setPixmap(self.iv_image.thumbnail)
+        self.setPixmap(QPixmap(str(self.iv_image.thumbnail_path)).scaled(imageviewer.settings.IMAGE_WIDTH,
+                                                                         imageviewer.settings.IMAGE_HEIGHT,
+                                                                         Qt.KeepAspectRatio))
         self.movie = None
 
     def gif(self):
@@ -30,12 +32,13 @@ class UiImageGroup(QLabel):
             return
         print("Creating movie for", str(self.iv_image.path))
         self.movie = QMovie(str(self.iv_image.path))
-        if self.iv_image.image.height() > imageviewer.settings.IMAGE_HEIGHT or self.iv_image.image.width() > \
-                imageviewer.settings.IMAGE_WIDTH:
+        image = QImage(str(self.iv_image.path))
+        if image.height() > imageviewer.settings.IMAGE_HEIGHT or image.width() > imageviewer.settings.IMAGE_WIDTH:
             # scale the movie if it doesn't fit in the frame
             # the frame is big enough we don't need the gif at full size to see what is going on
-            image2 = self.iv_image.image.scaled(imageviewer.settings.IMAGE_WIDTH, imageviewer.settings.IMAGE_HEIGHT,
-                                                Qt.KeepAspectRatio)
+            image2 = image.scaled(imageviewer.settings.IMAGE_WIDTH,
+                                  imageviewer.settings.IMAGE_HEIGHT,
+                                  Qt.KeepAspectRatio)
             size = QSize()
             size.setHeight(image2.height())
             size.setWidth(image2.width())
@@ -51,6 +54,10 @@ class UiImageGroup(QLabel):
     def enterEvent(self, event):
         if self.iv_image.filename.endswith(".gif"):
             self.gif()
+        elif self.iv_image.filename.endswith(".jpg"):
+            self.setPixmap(QPixmap(str(self.iv_image.path)).scaled(imageviewer.settings.IMAGE_WIDTH,
+                                                                   imageviewer.settings.IMAGE_HEIGHT,
+                                                                   Qt.KeepAspectRatio))
         QApplication.setOverrideCursor(Qt.PointingHandCursor)
         event.accept()
 

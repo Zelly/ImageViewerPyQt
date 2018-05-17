@@ -1,4 +1,3 @@
-from PyQt5.QtGui import QPixmap, QImage
 import pathlib
 import os
 import hashlib
@@ -10,6 +9,11 @@ class IVImage:
     def __init__(self, filepath):
         self.path = pathlib.Path(filepath)
         self.filename = self.path.name
+        self.db_entry = None
+        self.thumbnail_md5 = None
+        self.image_md5 = None
+
+        self.get_db_ifexists()
 
         edited_root = str(self.path).replace(imageviewer.settings.ROOT_DIR, '').replace('\\', '').replace(' ',
                                                                                                           '_').lower()
@@ -26,31 +30,48 @@ class IVImage:
             if self.filename.endswith("jpg"):
                 self.path = None
                 return
+        """
+        # Unecessary memory usage
         self.image = QImage(str(self.path))
         if not self.image:
             print("QImage failed to load: ", str(self.path))
             self.path = None
             return
-        self.image_md5 = hashlib.md5(open(str(self.path), 'rb').read()).hexdigest()
         # not 100% sure but I originally converted old jpg's to a standard jpg with pillow
         # I am unsure if this is required anymore(was trying to debug why an image wasn't displaying before)
-        if not self.thumbnail_path.is_file():
-            self.create_thumbnail()
 
         self.thumbnail = QPixmap(str(self.thumbnail_path))
         if not self.thumbnail:
             print("QPixmap for thumbnail did not load", str(self.thumbnail_path))
             self.path = None
-            return
-        self.thumbnail_md5 = hashlib.md5(open(str(self.thumbnail_path), 'rb').read()).hexdigest()
-        self.db_entry = None
-        self.set_db()
+            return"""
+        if not self.thumbnail_path.is_file():
+            self.create_thumbnail()
+        if not self.image_md5:
+            self.image_md5 = hashlib.md5(open(str(self.path), 'rb').read()).hexdigest()
+        if not self.thumbnail_md5:
+            self.thumbnail_md5 = hashlib.md5(open(str(self.thumbnail_path), 'rb').read()).hexdigest()
+
         if not self.db_entry:
-            print("Could not link to database, ", str(self.path))
-            self.path = None
-            return
+            self.set_db()
+            if not self.db_entry:
+                print("Could not link to database, ", str(self.path))
+                self.path = None
+                return
+
+    def get_db_ifexists(self):
+        pf_path = str(self.path).replace("\\\\", "/").replace("\\", "/")
+        self.db_entry = next((item for item in imageviewer.settings.IMAGE_DB if item["image_path"] == pf_path),
+                             None)
+        if self.db_entry:
+            if "image_md5" in self.db_entry:
+                self.image_md5 = self.db_entry["image_md5"]
+            if "thumbnail_md5" in self.db_entry:
+                self.thumbnail_md5 = self.db_entry["thumbnail_md5"]
 
     def set_db(self):
+        image_path = str(self.path).replace("\\\\", "/").replace("\\", "/")
+        thumb_path = str(self.thumbnail_path).replace("\\\\", "/").replace("\\", "/")
         self.db_entry = next((item for item in imageviewer.settings.IMAGE_DB if item["image_md5"] == self.image_md5),
                              None)
         if not self.db_entry:
@@ -58,8 +79,8 @@ class IVImage:
             new_entry = {
                 "image_md5": self.image_md5,
                 "thumbnail_md5": self.thumbnail_md5,
-                "image_path": str(self.path),
-                "thumbnail_path": str(self.thumbnail_path),
+                "image_path": image_path,
+                "thumbnail_path": thumb_path,
                 "tags": [],
             }
             imageviewer.settings.IMAGE_DB.append(new_entry)
@@ -68,12 +89,9 @@ class IVImage:
                 None)
 
     def create_thumbnail(self):
-        thumbnail_size = imageviewer.settings.IMAGE_WIDTH, imageviewer.settings.IMAGE_HEIGHT
-        print("Loading ", str(self.path))
+        thumbnail_size = 96, 96
         new_thumbnail = Image.open(str(self.path)).convert("RGB")
-        print("Creating thumbnail ...")
         new_thumbnail.resize(thumbnail_size)
         new_thumbnail.thumbnail(thumbnail_size)
         new_thumbnail.save(str(self.thumbnail_path), "JPEG")
         print("New thumbnail created at ", str(self.thumbnail_path))
-        print()
