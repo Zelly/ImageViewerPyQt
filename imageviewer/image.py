@@ -3,6 +3,27 @@ import os
 import hashlib
 from PIL import Image
 import imageviewer.settings
+from PyQt5.QtCore import QObject, pyqtSlot, pyqtSignal
+
+
+class IVImageWorker(QObject):
+    sig_done = pyqtSignal()
+
+    def __init__(self, image_list: list):
+        super().__init__()
+        if not image_list:
+            return
+        self.images = image_list
+
+    @pyqtSlot()
+    def load_images(self):
+        for filepath in self.images:
+            iv_image = IVImage(filepath)
+            if iv_image.path:
+                # error happened
+                imageviewer.settings.IMAGES.append(iv_image)
+                # qApp.processEvents()
+        self.sig_done.emit()
 
 
 class IVImage:
@@ -14,7 +35,7 @@ class IVImage:
         self.image_md5 = None
 
         self.get_db_ifexists()
-
+        print(filepath)
         edited_root = str(self.path).replace(imageviewer.settings.ROOT_DIR, '').replace('\\', '').replace(' ',
                                                                                                           '_').lower()
         _tmp_thumb_path = pathlib.Path(imageviewer.settings.THUMBNAIL_DIR, edited_root)
@@ -63,6 +84,7 @@ class IVImage:
         pf_path = str(self.path).replace("\\\\", "/").replace("\\", "/")
         self.db_entry = next((item for item in imageviewer.settings.IMAGE_DB if item["image_path"] == pf_path),
                              None)
+        # print(str(imageviewer.settings.IMAGE_DB))
         if self.db_entry:
             if "image_md5" in self.db_entry:
                 self.image_md5 = self.db_entry["image_md5"]
@@ -75,7 +97,7 @@ class IVImage:
         self.db_entry = next((item for item in imageviewer.settings.IMAGE_DB if item["image_md5"] == self.image_md5),
                              None)
         if not self.db_entry:
-            print("Created new image json db entry")
+            print("Created new image json db entry", image_path)
             new_entry = {
                 "image_md5": self.image_md5,
                 "thumbnail_md5": self.thumbnail_md5,
