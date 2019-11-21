@@ -3,18 +3,12 @@ Created on Sep 7, 2017
 
 @author: Zelly
 """
+from pathlib import Path
 
-
-global ROOT_DIR
-global THUMBNAIL_DIR
-global IMAGE_WIDTH
-global IMAGE_HEIGHT
-global DATABASE_PATH
-global IMAGES
-ROOT_DIR = "C:\\Users\\Zelly\\Pictures\\reaction pics"
-THUMBNAIL_DIR = "C:\\Users\\Zelly\\Pictures\\thumbnails"
-IMAGE_WIDTH = 256
-IMAGE_HEIGHT = 256
-DATABASE_PATH = "C:\\Users\\Zelly\\imageview.db"
+ROOT_DIR = Path("C:/Users/Zalera/Development/imageviewer/images").resolve()
+THUMBNAIL_DIR = Path("C:/Users/Zalera/Development/imageviewer/thumbnails").resolve()
+DATABASE_PATH = Path("C:/Users/Zalera/Development/imageviewer/imageviewer.db").resolve()
+IMAGE_WIDTH = 200
+IMAGE_HEIGHT = 200
 IMAGE_DB = []
 IMAGES = []

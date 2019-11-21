@@ -5,13 +5,12 @@ Created on Sep 7, 2017
 TODO: Add search function
 """
 from PyQt5.QtWidgets import QGridLayout, QSystemTrayIcon, \
-    qApp, QAction, QStyle, QMenu, QWidget, QScrollArea, QFrame, QLabel
+    qApp, QAction, QStyle, QMenu, QWidget, QScrollArea, QFrame
 from PyQt5.QtCore import QEvent, Qt, QThread, pyqtSlot
 import os
 from imageviewer.ui.image import UiImageGroup
 from imageviewer.image import IVImageWorker
 import imageviewer.settings
-import pathlib
 import json
 import time
 
@@ -22,14 +21,14 @@ class UiMainWindow(QWidget):
         QWidget.__init__(self)
         ms_start = int(round(time.time() * 1000))
         self.app = app
-        self.setMinimumSize(1100, 512)  # TODO: Resizable
-        self.setMaximumSize(1100, 1024)
+        self.setMinimumSize(1024, 512)  # TODO: Resizable
+        self.setMaximumSize(1024, 768)
         self.setWindowTitle('ImageViewer')
         self.setWindowIcon(self.style().standardIcon(QStyle.SP_ComputerIcon))  # TODO: Make icon
         self.tray_icon = QSystemTrayIcon(self)
         self.tray_icon.setIcon(self.style().standardIcon(QStyle.SP_ComputerIcon))
 
-        # Grid Layout & Scrpll Area of Image center
+        # Grid Layout & Scroll Area of Image center
         self.gridlayout = QGridLayout(self)
         self.setLayout(self.gridlayout)
         self.scrollArea = QScrollArea(self)
@@ -68,7 +67,7 @@ class UiMainWindow(QWidget):
         ms_load_db_end = int(round(time.time() * 1000))
         self.load_images()
         ms_load_images_end = int(round(time.time() * 1000))
-        #self.add_images()
+        # self.add_images()
         ms_end = int(round(time.time() * 1000))
         print("Time it took to load main window: ", ms_load_db_start - ms_start)
         print("time it took to load json db: ", ms_load_db_end - ms_load_db_start)
@@ -78,7 +77,7 @@ class UiMainWindow(QWidget):
 
     @staticmethod
     def load_db():
-        db_path = pathlib.Path(imageviewer.settings.DATABASE_PATH)
+        db_path = imageviewer.settings.DATABASE_PATH
         if db_path.is_file():
             with db_path.open("r") as db_file:
                 imageviewer.settings.IMAGE_DB = json.loads(db_file.read())
@@ -88,7 +87,7 @@ class UiMainWindow(QWidget):
 
     @staticmethod
     def save_db():
-        db_path = pathlib.Path(imageviewer.settings.DATABASE_PATH)
+        db_path = imageviewer.settings.DATABASE_PATH
         if imageviewer.settings.IMAGE_DB:
             with db_path.open("w") as db_file:
                 db_file.write(json.dumps(imageviewer.settings.IMAGE_DB))

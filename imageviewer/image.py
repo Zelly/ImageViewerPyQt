@@ -1,9 +1,9 @@
-import pathlib
 import os
 import hashlib
 from PIL import Image
 import imageviewer.settings
 from PyQt5.QtCore import QObject, pyqtSlot, pyqtSignal
+from pathlib import Path
 
 
 class IVImageWorker(QObject):
@@ -28,28 +28,30 @@ class IVImageWorker(QObject):
 
 class IVImage:
     def __init__(self, filepath):
-        self.path = pathlib.Path(filepath)
+        self.path = Path(filepath).resolve()
+        if not self.path:
+            print(f"imageviewer.image.IVImage Error resolving {str(filepath)} as file path")
+            return
         self.filename = self.path.name
         self.db_entry = None
         self.thumbnail_md5 = None
         self.image_md5 = None
-
-        self.get_db_ifexists()
-        print(filepath)
-        edited_root = str(self.path).replace(imageviewer.settings.ROOT_DIR, '').replace('\\', '').replace(' ',
-                                                                                                          '_').lower()
-        _tmp_thumb_path = pathlib.Path(imageviewer.settings.THUMBNAIL_DIR, edited_root)
-        _tmp_thumb_path = os.path.splitext(str(_tmp_thumb_path))[0] + ".jpg"
-        self.thumbnail_path = pathlib.Path(_tmp_thumb_path)
-        # this tmp thing seems counter productive but couldn't come up with a less hacky way
-
-        _tmp_file_path = os.path.splitext(str(self.path))[0]
-        if pathlib.Path(_tmp_file_path + ".jpg").is_file() and pathlib.Path(_tmp_file_path + ".gif").is_file():
+        self.get_db_if_exists()
+        edited_root = str(self.path).replace(str(imageviewer.settings.ROOT_DIR), '').replace("\\", "_").replace(" ",
+                                                                                                                "_").lower()
+        self.thumbnail_path = Path(imageviewer.settings.THUMBNAIL_DIR, edited_root).with_suffix(".jpg").resolve()
+        if not self.thumbnail_path:
+            print(
+                f"imageviewer.image.IVImage Error resolving {str(imageviewer.settings.THUMBNAIL_DIR)} + {str(edited_root)} as thumbnail path")
+            return
+        if self.path.with_suffix(".jpg").is_file() and self.path.with_suffix(".gif").is_file():
+            print("JPG and GIF exist, deleting jpg...")
             # if there is gif and jpeg of same file name remove the jpg
             # This sometimes happens when downloading images improperly
-            os.remove(_tmp_file_path + ".jpg")
-            if self.filename.endswith("jpg"):
+            self.path.with_suffix(".jpg").unlink()
+            if self.path.suffix == ".jpg":
                 self.path = None
+                print(f"imageviewer.image.IVImage duplicate JPG exiting creation")
                 return
         """
         # Unecessary memory usage
@@ -76,13 +78,12 @@ class IVImage:
         if not self.db_entry:
             self.set_db()
             if not self.db_entry:
-                print("Could not link to database, ", str(self.path))
+                print(f"Could not link to database, {str(self.path)}")
                 self.path = None
                 return
 
-    def get_db_ifexists(self):
-        pf_path = str(self.path).replace("\\\\", "/").replace("\\", "/")
-        self.db_entry = next((item for item in imageviewer.settings.IMAGE_DB if item["image_path"] == pf_path),
+    def get_db_if_exists(self):
+        self.db_entry = next((item for item in imageviewer.settings.IMAGE_DB if item["image_path"] == str(self.path)),
                              None)
         # print(str(imageviewer.settings.IMAGE_DB))
         if self.db_entry:
@@ -92,8 +93,8 @@ class IVImage:
                 self.thumbnail_md5 = self.db_entry["thumbnail_md5"]
 
     def set_db(self):
-        image_path = str(self.path).replace("\\\\", "/").replace("\\", "/")
-        thumb_path = str(self.thumbnail_path).replace("\\\\", "/").replace("\\", "/")
+        image_path = str(self.path)
+        thumb_path = str(self.thumbnail_path)
         self.db_entry = next((item for item in imageviewer.settings.IMAGE_DB if item["image_md5"] == self.image_md5),
                              None)
         if not self.db_entry:
